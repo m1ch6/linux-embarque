@@ -38,44 +38,38 @@ docker exec doorbell-device asterisk -rx "channel originate Local/owner@internal
 ```
 → Rings owner (auto-answers), holds 10s, records the call.
 
-### Test voicemail (leave a message)
+### Leave a message (IVR layer 2, option 2)
+The IVR has a real "leave a message" option, and the headless tester can drive
+it end to end — including streaming real audio so the message is saved:
 ```bash
-# Add temporary extension
-python3 -c "
-p='configs/extensions.conf'; s=open(p).read()
-if '9998' not in s:
-    s=s.replace('exten => 9999,1,Goto(ivr-main,s,1)\n','exten => 9999,1,Goto(ivr-main,s,1)\nexten => 9998,1,VoiceMail(owner,u)\n same => n,Hangup()\n',1)
-    open(p,'w').write(s)
-"
-docker exec doorbell-device asterisk -rx "dialplan reload"
-docker exec doorbell-device asterisk -rx "channel originate Local/9998@internal application Wait 20"
-# Clean up
-python3 -c "
-p='configs/extensions.conf'; s=open(p).read()
-s=s.replace('exten => 9998,1,VoiceMail(owner,u)\n same => n,Hangup()\n','')
-open(p,'w').write(s)
-"
-docker exec doorbell-device asterisk -rx "dialplan reload"
+# 9999 -> 3 (Miora) -> 2 (leave a message), then stream msg.wav as the message
+./scripts/sip-test.py call --user hadji --target 9999 \
+    --dtmf 32 --dtmf-delay 12 --audio msg.wav --audio-delay 6 --duration 34
 ```
+The message is written to `/var/spool/asterisk/monitor/1003-<timestamp>-<uniqueid>.wav`.
+`--dtmf-delay` has to outlast the welcome menu (~10 s) and `--duration` has to
+cover menu + message + the 5 s of silence that ends the recording. The tester
+uses its own local port (5099), so it can run while the TUI is up.
 
-### Test voicemail replay
+### Leave a message after 4 rings (nobody picks up)
+The same flow runs when a call is not answered: the phone rings 4 times (24 s)
+and the caller is then offered the message.
 ```bash
-# Add temporary extension
-python3 -c "
-p='configs/extensions.conf'; s=open(p).read()
-if '9997' not in s:
-    s=s.replace('exten => 9999,1,Goto(ivr-main,s,1)\n','exten => 9999,1,Goto(ivr-main,s,1)\nexten => 9997,1,VoiceMailMain(owner)\n same => n,Hangup()\n',1)
-    open(p,'w').write(s)
-"
-docker exec doorbell-device asterisk -rx "dialplan reload"
-docker exec doorbell-device asterisk -rx "channel originate Local/9997@internal application Wait 10"
-# Clean up
-python3 -c "
-p='configs/extensions.conf'; s=open(p).read()
-s=s.replace('exten => 9997,1,VoiceMailMain(owner)\n same => n,Hangup()\n','')
-open(p,'w').write(s)
-"
-docker exec doorbell-device asterisk -rx "dialplan reload"
+# 1003 rings 4 times, then takes the message
+./scripts/sip-test.py call --user hadji --target 1003 \
+    --audio msg.wav --audio-delay 3.5 --duration 1
+```
+`--audio-delay` counts from the *answer*, and an unanswered call only answers
+once the message prompt starts, so keep it short here. `--answer-timeout`
+(default 60 s) is what lets the tester wait out the ringing — the doorbell rings
+for 24 s before it says anything. The recording of the ringing itself is thrown
+away, so the panel gets one file: the message.
+
+### Replay the message
+```bash
+./scripts/play-recording.sh            # play the most recent recording
+./scripts/play-recording.sh --list     # list them all
+./scripts/play-voicemail.sh --list     # the voicemail boxes (dial *97)
 ```
 
 ### Verify results
@@ -100,10 +94,21 @@ ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers
 ```
 Runs all tests automatically and reports results.
 
-### IVR DTMF navigation (GUI)
-In the Linphone GUI, dial `9999`, then press:
-- `1` → leave voicemail for owner
-- `2` → ring owner
-- `0` → repeat greeting
-- (no input 5s) → goodbye + hangup
+### IVR DTMF navigation
+Dial `9999`.
+
+Layer 1 — pick a person:
+- `1` → Hadji (1001)
+- `2` → Johnson (1002)
+- `3` → Miora (1003)
+- `4` → Ulrich (1004)
+- `0` → repeat the menu
+- (no input) → goodbye + hangup
+- (invalid digit) → invalid + repeat (max 3)
+
+Layer 2 — for the person you picked:
+- `1` → call them now
+- `2` → leave them a message (prompt, beep, record)
+- `0` → repeat this menu
+- (no input) → goodbye + hangup
 - (invalid digit) → invalid + repeat (max 3)

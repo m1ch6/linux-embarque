@@ -59,13 +59,14 @@ STEP 2: IVR (Greeting Menu)
   1. In the visitor window, dial: 9999
   2. Press Enter.
 
-  Expected: welcome greeting -> 5 second menu wait.
+  Expected: welcome greeting -> menu wait.
 
   3. Press a digit:
-       1 -> leave a voicemail for the owner
-       2 -> ring the owner (answer manually)
+       1 -> call the owner (rings the house phone)
+       2 -> repeat the greeting
+       3 -> leave a message for the owner
        0 -> repeat the greeting
-       no input 5s -> goodbye + hang up
+       no input -> goodbye + hang up
        invalid digit -> retry, max 3 times
 
   Try each option and observe the behaviour.
@@ -74,28 +75,35 @@ EOF
 
 step_3() {
     cat <<'EOF'
-STEP 3: Leave a Voicemail
+STEP 3: Leave a Message (IVR choice 3)
 ============================================
 
   1. In the visitor window, dial: 9999
-  2. Press 1 during the menu.
+  2. Press 3 during the menu.
 
   Expected: voicemail greeting -> beep -> recording.
-  3. Speak your message.
+  3. Speak your message (at least 3 seconds).
   4. Hang up to finish.
 
   Verify:
-    docker exec doorbell-device find /var/spool/asterisk/voicemail -type f
+    ./scripts/play-voicemail.sh --list
   -> msg0000.wav + msg0000.txt in default/owner/INBOX/
 EOF
 }
 
 step_4() {
     cat <<'EOF'
-STEP 4: Replay Voicemail
+STEP 4: Replay the Message
 ============================================
 
-  1. In the owner window, dial: *97
+  From the command line (easiest):
+    ./scripts/play-voicemail.sh            # play the newest message
+    ./scripts/play-voicemail.sh --info     # caller id + duration
+    ./scripts/play-voicemail.sh --list     # every mailbox + message
+    ./scripts/play-voicemail.sh msg0000    # a specific message
+
+  Or from the phone (owner window):
+  1. Dial: *97
   2. Press Enter.
 
   Expected: VoiceMailMain asks for the mailbox PIN.

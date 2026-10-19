@@ -14,9 +14,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 SOURCES=(
-    sounds/custom/welcome.wav
-    sounds/custom/goodbye.wav
-    sounds/custom/invalid.wav
+    sounds/custom/*.wav
     sounds/vm-theperson.wav
 )
 

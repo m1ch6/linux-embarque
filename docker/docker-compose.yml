@@ -5,12 +5,21 @@ services:
       dockerfile: docker/Dockerfile
     container_name: doorbell-device
     restart: unless-stopped
-    ports:
-      # SIP signaling
-      - "5060:5060/udp"
-      - "5060:5060/tcp"
-      # RTP media (audio + video)
-      - "10000-10100:10000-10100/udp"
+
+    # Host networking is REQUIRED for working audio/video.
+    #
+    # With the default bridge network, rootless podman rewrites the source
+    # address of inbound SIP packets to the container's own IP. Asterisk then
+    # believes the caller lives at its own address and sends all RTP media
+    # back to itself, so calls connect but carry no audio in either direction.
+    # Publishing 5060 and 10000-10100/udp does not help: the RTP ports are
+    # rewritten the same way.
+    #
+    # With host networking Asterisk binds the real host interfaces, the peer
+    # address is genuine, and media flows normally. It also means softphones
+    # on this machine reach Asterisk at plain 127.0.0.1:5060.
+    network_mode: host
+
     volumes:
       # Live-edit configs without rebuilding
       - ../configs:/etc/asterisk

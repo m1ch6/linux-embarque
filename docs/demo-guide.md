@@ -41,38 +41,90 @@ Both register automatically with the Asterisk container (`doorbell-device`) on
 
 ## Demo 2 — IVR (greeting menu)
 
-1. In the **visitor** window, dial `9999` and press Enter (or click the call button).
-2. You hear the welcome greeting, then a 5-second pause to choose.
-3. Press a digit:
-   - **1** → go to voicemail (leave a message for the owner).
-   - **2** → ring the owner.
-   - **0** → repeat the greeting.
-   - no input (5 s) → goodbye and hang up.
-   - invalid digit → "invalid" prompt, then repeats (max 3 tries).
+1. Dial `9999` and press Enter (or click the call button).
+2. You hear the doorbell menu, then a pause to choose.
+3. **Layer 1 — pick a person:** **1** Hadji · **2** Johnson · **3** Miora ·
+   **4** Ulrich · **0** repeats the menu.
+4. **Layer 2 — for that person:** **1** call them now · **2** leave them a
+   message · **0** repeats this menu.
+   With **1** the phone rings **4 times** (24 s); if nobody picks up, the caller
+   hears "Please leave your message after the beep" and the message lands in
+   that person's panel — the same flow as **2**.
+5. no input → goodbye and hang up. invalid digit → "invalid" prompt, then
+   repeats (max 3 tries).
 
 ---
 
-## Demo 3 — Voicemail (leave + replay)
+## Demo 3 — Leave a message + replay
 
 **Leave a message**
 
-1. From the **visitor** window, dial `9999`, wait for the greeting, press **1**.
-2. Voicemail plays its greeting, then records your message after the beep.
-3. Speak, then hang up (or wait for the max length).
+1. Dial `9999`.
+2. Press the person (**1**–**4**), then press **2** to leave a message.
+3. You hear "Please leave your message after the beep", then a beep, then
+   recording starts.
+4. Speak. Five seconds of silence ends the message and says goodbye — but
+   hanging up straight after speaking works just as well: the dialplan passes
+   `k` to `Record()` precisely so that a caller who hangs up while the
+   recording is still running does not lose their message (without it,
+   Asterisk deletes the file).
+
+**Or leave a message after 4 rings**
+
+1. Dial `9999`, press the person, then press **1** (call them now).
+2. Their phone rings **4 times** (24 s). If nobody picks up you hear "Please
+   leave your message after the beep" instead of Asterisk's own voicemail
+   greeting, and the message is saved exactly like the one above: the silent
+   recording of the ringing is dropped, so the panel gets one file, not two.
+   The panel that is ringing comes to the front while it rings; when the call
+   falls through to the voicemail the *caller's* panel comes back, microphone
+   and all — speak, then press **H**. Hanging up is what saves the message.
+3. Hanging up **while it is still ringing** (refusing the call) just ends it:
+   no prompt, no recording, and the caller's panel comes back to the front.
 
 **Verify the message**
 
 ```bash
-docker exec doorbell-device find /var/spool/asterisk/voicemail -type f
+docker exec doorbell-device ls -l /var/spool/asterisk/monitor/
+./scripts/play-recording.sh --list
 ```
-→ a `.wav` under `default/owner/INBOX/`.
+→ the message is saved as `<number>-<timestamp>-<uniqueid>.wav`, e.g.
+`1003-20261019-080816-...wav` if you chose Miora. The extension number comes
+first, which is what puts the message in that person's panel in the TUI.
 
-**Replay the message**
+In the TUI the message also appears **by itself** in that person's panel
+(`Messages (N)`), already selected, with `New message: …` in the status line.
+Press **P** to hear it — there is nothing to refresh.
 
-1. In the **owner** window, dial `*97` and press Enter.
-2. Enter the mailbox PIN: **5678** (owner) — visitor's mailbox uses **1234**.
-3. Keypad: `1` new messages, `2` old, `3` advanced, `4` folders, `0` options,
-   `*` help, `#` exit.
+**Replay the message — from the command line**
+
+```bash
+./scripts/play-recording.sh            # play the most recent recording
+./scripts/play-recording.sh --list     # list them all
+./scripts/play-recording.sh --info     # codec / duration / size
+```
+
+**Replay the message — from the TUI**
+
+Select the person's panel with Tab, use ↑/↓ on their `Messages (N)` list and
+press **P**.
+
+**Voicemail (dial `*97`)**
+
+An unanswered call no longer goes to voicemail: it rings 4 times and then takes
+a message, which lands in the person's panel like any other. The voicemail
+boxes are still there if you want them:
+
+```bash
+./scripts/play-voicemail.sh --list        # every mailbox + message
+./scripts/play-voicemail.sh               # newest message in any mailbox
+./scripts/play-voicemail.sh --mailbox miora
+```
+
+Or dial `*97` from a phone and enter that person's PIN — `1234` Hadji, `2345`
+Johnson, `3456` Miora, `4567` Ulrich (see `configs/voicemail.conf`).
+Keypad: `1` new messages, `2` old, `3` advanced, `4` folders, `0` options,
+`*` help, `#` exit.
 
 ---
 
@@ -126,6 +178,10 @@ codec (**VP8** here).
 | `*43` | Echo test (audio check) |
 | `*44` | Playback test |
 | `*97` | Check your own voicemail (PIN 5678 for owner, 1234 for visitor) |
-| `1` (in IVR) | Leave a voicemail for the owner |
-| `2` (in IVR) | Ring the owner |
-| `0` (in IVR) | Repeat greeting |
+| `1` (in IVR) | Reach Hadji (1001) |
+| `2` (in IVR) | Reach Johnson (1002) |
+| `3` (in IVR) | Reach Miora (1003) |
+| `4` (in IVR) | Reach Ulrich (1004) |
+| `0` (in IVR) | Repeat the menu |
+| `1` (after picking) | Call that person now |
+| `2` (after picking) | Leave that person a message |

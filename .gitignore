@@ -15,3 +15,18 @@ cdr/
 .DS_Store
 .idea/
 .vscode/
+
+# Rust build artifacts
+tui/target/
+
+# baresip runtime state: written at startup (uuid, contacts, registration).
+# The hand-written file next to them, conf/<endpoint>/config, IS committed.
+tui/conf/*/accounts
+tui/conf/*/contacts
+tui/conf/*/current_contact
+tui/conf/*/uuid
+visitor/
+
+# Python bytecode
+__pycache__/
+*.pyc
