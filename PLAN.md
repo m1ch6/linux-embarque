@@ -30,7 +30,7 @@ Everything runs on a tiny, lightweight Linux (Alpine) and is fully testable on y
 | Phone system | The "brain" that handles calls | Asterisk (from Alpine package) |
 | SIP engine | Modern way phones talk to each other | PJSIP (built into Asterisk) |
 | Emulation harness | Fake "device" running on your laptop | Docker container |
-| Test phones | Two fake phones on your laptop | Linphone or Zoiper (free apps) |
+| Test phones | One fake phone per resident, in the TUI | baresip (driven by tui/) |
 | Greeting audio | Recorded voice message | ffmpeg (you already have it) |
 
 ---
@@ -83,12 +83,12 @@ Linux_Embarque/
 
 ### Phase 0 — Preparation (you, on host)
 **Goal:** Have tools ready.
-- [ ] Install a softphone app on your laptop: **Linphone** (recommended, free) or Zoiper.
+- [ ] Install **baresip** (the TUI drives it) and a Rust toolchain.
 - [ ] Verify Docker works: `docker run --rm hello-world`.
 - [ ] (Optional, needs sudo) `sudo apt install sox` — useful for audio conversion. ffmpeg already present.
 - [ ] Create the project folder structure above.
 
-**Done when:** folder structure exists, softphone installed, Docker works.
+**Done when:** folder structure exists, baresip installed, Docker works.
 
 ---
 
@@ -124,10 +124,10 @@ Tasks:
 - [ ] `rtp.conf`: port range 10000–10100.
 - [ ] `logger.conf`: console + rotating file log.
 - [ ] `asterisk.conf`: basic paths.
-- [ ] Configure softphones (Linphone) on host to register as 100 and 101 to the container IP (e.g., 127.0.0.1:5060 or container IP).
+- [ ] Configure the TUI endpoints to register as hadji..ulrich against `127.0.0.1:5060`.
 - [ ] Test: call 100 → 101 and back; echo test; check no errors in logs.
 
-**Done when:** Two softphones register, voice call works both ways, echo test passes.
+**Done when:** the TUI panels register, voice call works, echo test passes.
 
 ---
 
@@ -183,13 +183,13 @@ Tasks:
 ---
 
 ### Phase 6 — Feature: Simple one-to-one video call
-**Goal:** Two softphones can have a video call through Asterisk.
+**Goal:** Asterisk can relay a video call (needs a video-capable client).
 
 Tasks:
 - [ ] In `pjsip.conf`, ensure endpoints 100/101 allow video codecs (H264 and/or VP8) in addition to audio (ulaw/alaw). Set `allow=!all,ulaw,alaw,h264,vp8` (or similar).
 - [ ] In `rtp.conf`, ensure video RTP ports are in the media range (same range is fine).
 - [ ] Disable video transcoding (Asterisk relays video; both sides must use the same codec). Document this.
-- [ ] Configure softphones (Linphone) to enable video and use H264/VP8.
+- [ ] Configure a video-capable client to enable video and use H264/VP8.
 - [ ] Test: video call 100 ↔ 101; verify picture on both sides; check CPU/RAM usage during call.
 - [ ] Test mixed call: voice-only phone ↔ video phone (should fall back to voice).
 - [ ] Document bandwidth/CPU observations.
@@ -248,9 +248,9 @@ Tasks:
 
 ## 7. Testing approach (simple)
 
-- **Two softphones** on your laptop act as "visitor" (100) and "owner" (101).
+- **Four TUI panels** on your laptop act as the four residents — hadji, johnson, miora and ulrich.
 - **Docker container** acts as the "doorbell device."
-- You call from one softphone to the other (or to the IVR number) and observe.
+- You call from one panel to another (or to the IVR number) and observe.
 - Check files (recordings, voicemail, CDR) inside the container via `docker exec`.
 - All tests are manual + a small automated smoke script.
 
@@ -272,7 +272,7 @@ Tasks:
 
 The project is complete when:
 - [ ] Alpine Docker container builds and runs Asterisk.
-- [ ] Two softphones register and make voice calls.
+- [ ] TUI panels register and make voice calls.
 - [ ] IVR menu works (all digits, invalid, timeout).
 - [ ] Voicemail: leave + retrieve + delete works.
 - [ ] Call recording: file created and playable per call; CDR logged.

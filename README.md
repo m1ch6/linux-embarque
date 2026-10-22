@@ -7,6 +7,7 @@ A lightweight embedded doorbell/intercom built on **Alpine Linux + Asterisk**, f
 2. **Voicemail / messages** — spoken messages are saved and can be replayed.
 3. **Call recording** — every call saved as a WAV file + CDR log.
 4. **Simple one-to-one video** — H264/VP8 relayed by Asterisk (no transcoding).
+   Relaying only: it needs a video-capable client; the bundled TUI is audio-only.
 
 ### The IVR menu (dial `9999`)
 
@@ -51,7 +52,8 @@ there is nobody to ring, so the message is offered straight away. Dialling
 
 ### Prerequisites
 - Docker (with your user in the `docker` group)
-- **Linphone** softphone for testing (`sudo apt install linphone-desktop`)
+- For the TUI: **baresip** and a **Rust** toolchain
+  (`sudo apt install baresip`; get Rust from <https://rustup.rs>)
 
 ### Run it
 The easiest way is the unified menu:
@@ -66,14 +68,17 @@ Or drive the scripts directly:
 
 ```bash
 ./scripts/build-image.sh    # build the Asterisk image (first time)
-./scripts/start-all.sh      # container + two Linphone windows (visitor, owner)
-./scripts/stop-all.sh       # stop everything
-./scripts/reset-demo.sh     # wipe recordings/voicemail/CDR + softphone state
+./scripts/start-all.sh      # start the PBX container
+./scripts/stop-all.sh       # stop the PBX
+./scripts/reset-demo.sh     # wipe recordings/voicemail/CDR
 ```
 
-`start-all.sh` regenerates clean, deterministic Linphone profiles via
-`scripts/setup-linphone.sh` so the two windows always come up correctly named
-(**visitor** and **owner**) with a single registered SIP account each.
+Then start the SIP clients — the TUI, which runs one baresip endpoint per
+resident (**hadji**, **johnson**, **miora**, **ulrich**):
+
+```bash
+cd tui && cargo run --release
+```
 
 ### Test
 ```bash
@@ -81,16 +86,18 @@ Or drive the scripts directly:
 ```
 
 ### Make a call
-Two Linphone windows open:
-- **visitor** — the doorbell panel
-- **owner** — the phone inside the house
+The TUI shows one panel per resident:
+- **hadji** · **johnson** · **miora** · **ulrich**
 
-The phones do **not** auto-answer. In the visitor window, dial `owner` → the
-owner window rings and shows **Visitor** as the caller → click Answer.
-Dial `9999` for the IVR, `*43` for echo test, `*44` for playback, `*97` for voicemail.
+Panels do **not** auto-answer. Press Tab to focus a panel, type a number and
+press Enter to dial; the callee's panel rings and you press Enter there to
+answer. Press `H` to hang up.
+Dial `1003` (or `miora`) to call Miora, `9999` for the IVR, `*43` for echo
+test, `*44` for playback, `*97` for voicemail.
 
-See `docs/demo-guide.md` for the full step-by-step walkthrough (voice, IVR,
-voicemail, recording, video).
+See `tui/README.md` for the key bindings and behaviour, and
+`docs/demo-guide.md` for a step-by-step walkthrough (voice, IVR, voicemail,
+recording).
 
 ### Replay a voicemail message
 ```bash
@@ -101,10 +108,9 @@ voicemail, recording, video).
 ./scripts/play-voicemail.sh msg0000           # a specific message
 ```
 
-### Test without a softphone (headless)
-If Linphone is not available, the same IVR/message flow can be driven from
-the command line — this registers as a real SIP endpoint, sends DTMF and can
-stream a WAV as the caller's audio:
+### Test headless (no TUI)
+The same IVR/message flow can be driven from the command line — this registers
+as a real SIP endpoint, sends DTMF and can stream a WAV as the caller's audio:
 ```bash
 # 9999 -> 3 (Miora) -> 2 (leave a message), then speak for msg.wav
 ./scripts/sip-test.py call --user hadji --target 9999 \
@@ -173,14 +179,23 @@ Sounds need no reload: they are read from disk on every playback.
 ```
 
 ## Project layout
-See `PLAN.md` for the full plan and phases.
+| Path | Contents |
+|---|---|
+| `configs/` | Asterisk configuration (dialplan, PJSIP, voicemail, logging) |
+| `docker/` | Container image and compose setup |
+| `scripts/` | Build, demo, recording and test helpers |
+| `sounds/` | Greeting and IVR prompts (live-mounted into the container) |
+| `tests/` | Test plan |
+| `tui/` | baresip-driven terminal UI |
+| `docs/` | Demo guides |
+| `PLAN.md` | Full project plan and phases |
 
 ## Notes
 - The container runs with **host networking** (`network_mode: host`). This is
   required: on a rootless podman bridge, inbound SIP source addresses are
   rewritten to the container's own IP, so Asterisk sends all RTP back to
   itself and calls connect with no audio. Publishing 5060/10000-10100 does not
-  fix it. With host networking, softphones on this machine use `127.0.0.1:5060`.
-- Video is relayed only (no transcoding). Both sides must use the same codec (VP8 here).
+  fix it. With host networking, SIP clients on this machine use `127.0.0.1:5060`.
+- Video is relayed only (no transcoding). Both sides must use the same codec (H264 or VP8).
 - Voicemail is stored on-device; no email delivery in base setup.
 - Container runs as the `asterisk` user (non-root).

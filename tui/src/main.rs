@@ -91,7 +91,10 @@ impl App {
     }
 
     fn spawn(&mut self) -> Result<(), String> {
-        let _ = std::process::Command::new("pkill").arg("-f").arg("baresip").output();
+        // Match the process name exactly. `pkill -f baresip` would also kill
+        // any shell whose command line merely contains the word -- for example
+        // one working in this repository.
+        let _ = std::process::Command::new("pkill").arg("-x").arg("baresip").output();
         std::thread::sleep(Duration::from_millis(500));
         // Sort out the microphone level first (the default source is the raw
         // mic at this point), then set up echo cancellation.

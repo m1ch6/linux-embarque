@@ -24,8 +24,8 @@ cleanup() {
     python3 - <<'PY'
 p='configs/extensions.conf'
 s=open(p).read()
-s=s.replace("exten => 9998,1,VoiceMail(owner,u)\n same => n,Hangup()\n","")
-s=s.replace("exten => 9997,1,VoiceMailMain(owner)\n same => n,Hangup()\n","")
+s=s.replace("exten => 9998,1,VoiceMail(miora,u)\n same => n,Hangup()\n","")
+s=s.replace("exten => 9997,1,VoiceMailMain(miora)\n same => n,Hangup()\n","")
 open(p,'w').write(s)
 PY
     docker exec $CONTAINER asterisk -rx "dialplan reload" >/dev/null 2>&1 || true
@@ -36,8 +36,8 @@ trap cleanup EXIT
 python3 - <<'PY'
 p='configs/extensions.conf'
 s=open(p).read()
-s=s.replace("exten => 9998,1,VoiceMail(owner,u)\n same => n,Hangup()\n","")
-s=s.replace("exten => 9997,1,VoiceMailMain(owner)\n same => n,Hangup()\n","")
+s=s.replace("exten => 9998,1,VoiceMail(miora,u)\n same => n,Hangup()\n","")
+s=s.replace("exten => 9997,1,VoiceMailMain(miora)\n same => n,Hangup()\n","")
 open(p,'w').write(s)
 PY
 docker exec $CONTAINER asterisk -rx "dialplan reload" >/dev/null 2>&1
@@ -51,7 +51,7 @@ echo "============================================"
 echo ""
 
 echo "[1/9] Endpoints..."
-docker exec $CONTAINER asterisk -rx "pjsip show endpoints" | grep -iE 'visitor/|owner/' | grep -v 'Endpoint:  <'
+docker exec $CONTAINER asterisk -rx "pjsip show endpoints" | grep -iE 'hadji/|johnson/|miora/|ulrich/' | grep -v 'Endpoint:  <'
 
 echo "[2/9] IVR (reach + timeout)..."
 docker exec $CONTAINER asterisk -rx "channel originate Local/s@ivr-main application NoOp" >/dev/null 2>&1
@@ -68,8 +68,8 @@ docker exec $CONTAINER asterisk -rx "channel originate Local/*44@internal applic
 sleep 2
 echo "      OK"
 
-echo "[5/9] Voice call (visitor -> owner)..."
-docker exec $CONTAINER asterisk -rx "channel originate Local/owner@internal application Wait 8" >/dev/null 2>&1
+echo "[5/9] Voice call (hadji -> miora)..."
+docker exec $CONTAINER asterisk -rx "channel originate Local/1003@internal application Wait 8" >/dev/null 2>&1
 sleep 10
 echo "      OK - call completed"
 
@@ -84,7 +84,7 @@ python3 - <<'PY'
 p='configs/extensions.conf'
 s=open(p).read()
 needle="exten => 9999,1,Goto(ivr-main,s,1)\n"
-add=needle+"exten => 9998,1,VoiceMail(owner,u)\n same => n,Hangup()\n"
+add=needle+"exten => 9998,1,VoiceMail(miora,u)\n same => n,Hangup()\n"
 s=s.replace(needle,add,1)
 open(p,'w').write(s)
 PY
@@ -98,8 +98,8 @@ echo "[9/9] Voicemail replay..."
 python3 - <<'PY'
 p='configs/extensions.conf'
 s=open(p).read()
-needle="exten => 9998,1,VoiceMail(owner,u)\n same => n,Hangup()\n"
-add=needle+"exten => 9997,1,VoiceMailMain(owner)\n same => n,Hangup()\n"
+needle="exten => 9998,1,VoiceMail(miora,u)\n same => n,Hangup()\n"
+add=needle+"exten => 9997,1,VoiceMailMain(miora)\n same => n,Hangup()\n"
 s=s.replace(needle,add,1)
 open(p,'w').write(s)
 PY
@@ -118,6 +118,6 @@ echo "  CDR rows:   $(docker exec $CONTAINER sh -c 'wc -l < /var/log/asterisk/cd
 echo ""
 echo "Note: Leaving a real voicemail needs an audio source (softphone or the"
 echo "      headless tester). To record and replay one end to end:"
-echo "        ./scripts/sip-test.py call --user visitor --target 9999 \\"
+echo "        ./scripts/sip-test.py call --user hadji --target 9999 \\"
 echo "            --dtmf 3 --dtmf-delay 10 --audio msg.wav --audio-delay 8"
 echo "        ./scripts/play-voicemail.sh"

@@ -59,10 +59,10 @@ cargo run --release
   ringing call prints "call: rejecting incoming call …", which matches none of
   the end-of-call phrases, and without the reconciliation the panel would sit on
   "Ringing (incoming)" for ever.
-* **One-way audio between people.** The callee answers with
-  `/acceptdir audio=recvonly video=inactive` and then switches its microphone
-  to the silent ALSA device, so it never transmits. Only the caller talks.
-* **The caller always dials full duplex.** `audio=sendrecv` on every call,
+* **One-way audio between people.** The callee answers with `/accept` and then
+  mutes its microphone (`/mute`), so it never transmits. Only the caller talks.
+* **The caller always dials full duplex.** `/dial` is full duplex (sendrecv) on
+  every call,
   because Asterisk talks to the caller: the doorbell menu, and "please leave
   your message after the beep" when a call is not answered. A send-only caller
   is played to by Asterisk but never hears any of it — which is exactly how the

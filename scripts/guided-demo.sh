@@ -8,11 +8,11 @@
 #     line before the navigation prompt.
 #   - Navigation (Enter=next, b=back, q=quit) is handled in ONE place.
 #
-# The window labels match the deterministic Linphone profiles created by
-# scripts/setup-linphone.sh: "visitor" (doorbell) and "owner" (house phone).
+# The SIP clients are the TUI's baresip panels (see tui/README.md): hadji,
+# johnson, miora and ulrich. Start it first with:  cd tui && cargo run --release
 
 CONTAINER=doorbell-device
-TOTAL=9
+TOTAL=8
 STEP=1
 
 # ---------------------------------------------------------------- banner
@@ -27,19 +27,22 @@ header() {
 # ---------------------------------------------------------------- steps
 step_1() {
     cat <<'EOF'
-STEP 1: Voice Call (visitor -> owner)
+STEP 1: Voice Call (hadji -> miora)
 ============================================
 
-  1. In the visitor window, click the search bar.
-  2. Type: owner
+  In the TUI (start it with: cd tui && cargo run --release):
+
+  1. Press Tab until the Hadji panel is ACTIVE.
+  2. Type: 1003
   3. Press Enter.
 
-  Expected: the owner window rings and shows
-            "Visitor" as the caller.
-  4. Click the green Answer button in the owner window.
-  5. Talk — audio flows both ways.
+  Expected: the Miora panel starts ringing and the
+            focus jumps to it (ringing follows the callee).
+  4. Press Enter on the Miora panel to answer.
+  5. Talk. Only the caller transmits (the callee answers
+     receive-only), so Hadji is heard on Miora's panel.
      Recording starts automatically.
-  6. Hang up from either window.
+  6. Press H to hang up.
 
   Verify recording:
     docker exec doorbell-device ls /var/spool/asterisk/monitor/
@@ -56,16 +59,18 @@ step_2() {
 STEP 2: IVR (Greeting Menu)
 ============================================
 
-  1. In the visitor window, dial: 9999
+  1. On any TUI panel, type: 9999
   2. Press Enter.
 
   Expected: welcome greeting -> menu wait.
 
-  3. Press a digit:
-       1 -> call the owner (rings the house phone)
-       2 -> repeat the greeting
-       3 -> leave a message for the owner
-       0 -> repeat the greeting
+  3. Press a person:
+       1 -> Hadji      2 -> Johnson
+       3 -> Miora      4 -> Ulrich
+     then:
+       1 -> call that person now
+       2 -> leave that person a message
+       0 -> repeat the menu
        no input -> goodbye + hang up
        invalid digit -> retry, max 3 times
 
@@ -75,19 +80,19 @@ EOF
 
 step_3() {
     cat <<'EOF'
-STEP 3: Leave a Message (IVR choice 3)
-============================================
+STEP 3: Leave a Message (IVR: person, then "2")
+=============================================
 
-  1. In the visitor window, dial: 9999
-  2. Press 3 during the menu.
+  1. On any TUI panel, dial: 9999
+  2. Press 3 (Miora), then 2 (leave a message).
 
-  Expected: voicemail greeting -> beep -> recording.
+  Expected: "leave your message after the beep" -> beep -> recording.
   3. Speak your message (at least 3 seconds).
-  4. Hang up to finish.
+  4. Press H to finish (hanging up is what saves it).
 
   Verify:
-    ./scripts/play-voicemail.sh --list
-  -> msg0000.wav + msg0000.txt in default/owner/INBOX/
+    ./scripts/play-recording.sh --list
+  -> 1003-<timestamp>-<uniqueid>.wav, and it appears in Miora's TUI panel.
 EOF
 }
 
@@ -96,22 +101,19 @@ step_4() {
 STEP 4: Replay the Message
 ============================================
 
+  From the TUI:
+  1. Press Tab to reach the CONFIG panel.
+  2. Use the up/down arrows to select the recording,
+     then press P to play it through the speakers.
+
   From the command line (easiest):
-    ./scripts/play-voicemail.sh            # play the newest message
-    ./scripts/play-voicemail.sh --info     # caller id + duration
-    ./scripts/play-voicemail.sh --list     # every mailbox + message
-    ./scripts/play-voicemail.sh msg0000    # a specific message
+    ./scripts/play-recording.sh            # play the most recent recording
+    ./scripts/play-recording.sh --info     # codec / duration / size
+    ./scripts/play-recording.sh --list     # list them all
+    ./scripts/play-voicemail.sh --list     # the voicemail boxes (dial *97)
 
-  Or from the phone (owner window):
-  1. Dial: *97
-  2. Press Enter.
-
-  Expected: VoiceMailMain asks for the mailbox PIN.
-  3. Type PIN: 5678
-  4. Press Enter.
-
-  Expected: message count, then your message.
-  Press # to exit, or hang up.
+  Voicemail (from a panel): dial *97, then that person's PIN
+  (1234 Hadji, 2345 Johnson, 3456 Miora, 4567 Ulrich).
 EOF
 }
 
@@ -120,7 +122,7 @@ step_5() {
 STEP 5: Echo Test (Audio Check)
 ============================================
 
-  1. In the visitor window, dial: *43
+  1. On any TUI panel, type: *43
   2. Press Enter.
 
   Expected: you hear your own voice played back.
@@ -133,7 +135,7 @@ step_6() {
 STEP 6: Playback Test
 ============================================
 
-  1. In the visitor window, dial: *44
+  1. On any TUI panel, type: *44
   2. Press Enter.
 
   Expected: plays the demo-congrats sound file.
@@ -142,24 +144,7 @@ EOF
 
 step_7() {
     cat <<'EOF'
-STEP 7: One-to-one Video
-============================================
-
-  1. In the visitor window, start a call to: owner
-  2. Click the video-camera button to enable video.
-  3. In the owner window, click Answer, then also
-     enable its video-camera button.
-
-  Expected: both windows show the live camera image.
-  Asterisk relays video without transcoding (VP8 codec).
-
-  If the camera does not open, check Settings -> Video.
-EOF
-}
-
-step_8() {
-    cat <<'EOF'
-STEP 8: Verify Recordings & CDR
+STEP 7: Verify Recordings & CDR
 ============================================
 
   Recordings:
@@ -185,15 +170,15 @@ EOF
 EOF
 }
 
-step_9() {
+step_8() {
     cat <<'EOF'
-STEP 9: Cleanup
+STEP 8: Cleanup
 ============================================
 
   Clean test data:
     ./scripts/reset-demo.sh
 
-  Stop everything:
+  Stop the PBX:
     ./scripts/stop-all.sh
 
 ============================================
@@ -211,7 +196,7 @@ while :; do
 
     if [ "$STEP" -eq "$TOTAL" ]; then
         read -rp "  [Enter=exit, b=back, q=quit]: " input
-    elif [ "$STEP" -eq 1 ] || [ "$STEP" -eq 8 ]; then
+    elif [ "$STEP" -eq 1 ] || [ "$STEP" -eq 7 ]; then
         read -rp "  [Enter=next, p=play recording, b=back, q=quit]: " input
     else
         read -rp "  [Enter=next, b=back, q=quit]: " input

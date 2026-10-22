@@ -1,18 +1,18 @@
 # CLI Demo Guide — Smart Doorbell
 
-All features can be tested via the Asterisk CLI without a softphone.
+All features can be tested via the Asterisk CLI without the TUI.
 
 ## Prerequisites
 ```bash
-cd /home/miora/Projets/Linux_Embarque
-./scripts/start-all.sh   # starts container + Linphone windows
+cd /home/miora/Projets/baresip
+./scripts/start-all.sh   # starts the PBX container
 ```
 
 ## Quick commands
 
 ### Check system status
 ```bash
-docker exec doorbell-device asterisk -rx "pjsip show endpoints" | grep -iE 'visitor/|owner/' | grep -v 'Endpoint:'
+docker exec doorbell-device asterisk -rx "pjsip show endpoints" | grep -iE 'hadji/|johnson/|miora/|ulrich/' | grep -v 'Endpoint:'
 docker exec doorbell-device asterisk -rx "core show channels" | tail -2
 ```
 
@@ -32,11 +32,12 @@ docker exec doorbell-device asterisk -rx "channel originate Local/*43@internal a
 docker exec doorbell-device asterisk -rx "channel originate Local/*44@internal application NoOp"
 ```
 
-### Test voice call (visitor → owner)
+### Test voice call (hadji → miora)
 ```bash
-docker exec doorbell-device asterisk -rx "channel originate Local/owner@internal application Wait 10"
+docker exec doorbell-device asterisk -rx "channel originate Local/1003@internal application Wait 20"
 ```
-→ Rings owner (auto-answers), holds 10s, records the call.
+→ Rings Miora, holds, and (if unanswered) moves on to the message flow.
+A registered baresip endpoint (a TUI panel) is needed for it to actually ring.
 
 ### Leave a message (IVR layer 2, option 2)
 The IVR has a real "leave a message" option, and the headless tester can drive

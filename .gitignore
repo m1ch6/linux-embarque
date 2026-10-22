@@ -25,7 +25,6 @@ tui/conf/*/accounts
 tui/conf/*/contacts
 tui/conf/*/current_contact
 tui/conf/*/uuid
-visitor/
 
 # Python bytecode
 __pycache__/

@@ -379,23 +379,17 @@ impl BaresipInstance {
     /// other end: the callee answers receive-only and switches its microphone
     /// off (see `accept`), so it never transmits.
     pub fn dial(&self, uri: &str) -> Result<(), String> {
-        self.send(&format!("/dialdir {} audio=sendrecv video=inactive", uri))
+        // baresip 1.x has no /dialdir. A plain /dial is already full duplex
+        // (audio=sendrecv), which is what the caller needs, and the TUI configs
+        // load no video module, so the call is audio-only anyway.
+        self.send(&format!("/dial {}", uri))
     }
     pub fn hangup(&self) -> Result<(), String> { self.send("/hangup") }
     pub fn accept(&self) -> Result<(), String> {
-        // Receive-only: the callee hears the caller but never transmits.
-        self.send("/acceptdir audio=recvonly video=inactive")?;
-        // Now switch this endpoint's microphone to the ALSA silent device so it
-        // is genuinely off. This must happen *after* the call is established:
-        // while idle baresip has no sample rate yet and `alsa,null` fails to
-        // reset ("cannot set sample rate to 0 Hz"), falling back to the real mic.
-        if let Some(tx) = self.stdin_tx.clone() {
-            thread::spawn(move || {
-                thread::sleep(Duration::from_millis(900));
-                let _ = tx.send("/ausrc alsa,null\n".to_string());
-            });
-        }
-        Ok(())
+        // baresip 1.x has no /acceptdir. Accept the call, then mute the
+        // microphone: the callee hears the caller but never transmits.
+        self.send("/accept")?;
+        self.send("/mute")
     }
     /// Turn this endpoint's microphone back on, using whichever device the
     /// process was spawned with (echo-cancelled when available).

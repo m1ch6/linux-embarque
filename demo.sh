@@ -7,7 +7,7 @@ while true; do
     echo "============================================"
     echo "  DOORBELL DEMO — CONTROL MENU"
     echo "============================================"
-    echo "  1) Start all (container + phones)"
+    echo "  1) Start all (PBX container)"
     echo "  2) Stop all"
     echo "  3) Reset demo (clean test data)"
     echo "  4) Guided demo (step-by-step manual)"

@@ -1,10 +1,10 @@
 # Test Plan
 
 ## Phase 2 — Base calls
-- [ ] Softphone A registers as visitor (status: Registered).
-- [ ] Softphone B registers as owner.
-- [ ] Call visitor -> owner: audio both ways.
-- [ ] Call owner -> visitor: audio both ways.
+- [ ] Softphone A registers as hadji (status: Registered).
+- [ ] Softphone B registers as miora.
+- [ ] Call hadji -> miora: audio both ways.
+- [ ] Call miora -> hadji: audio both ways.
 - [ ] Echo test *43 works.
 - [ ] Playback test *44 works.
 
@@ -47,7 +47,7 @@
 - [ ] CDR row present in /var/log/asterisk/cdr-csv/Master.csv.
 
 ## Phase 6 — Video
-- [ ] Video call visitor <-> owner: picture on both sides.
+- [ ] Video call hadji <-> miora: picture on both sides.
 - [ ] Mixed (voice-only <-> video): falls back to voice.
 - [ ] CPU/RAM acceptable during video call.
 

@@ -1,31 +1,56 @@
-# Demo Guide — Smart Doorbell (GUI)
+# Demo Guide — Smart Doorbell (TUI)
 
-Two **Linphone** windows are open on your desktop after `Start all`:
+The SIP clients are the TUI's panels — one baresip endpoint per resident:
 
-- **Window "visitor"** — the doorbell panel (`sip:visitor@127.0.0.1`, SIP port 5070)
-- **Window "owner"** — the phone inside the house (`sip:owner@127.0.0.1`, SIP port 5080)
+- **hadji** (1001) · **johnson** (1002) · **miora** (1003) · **ulrich** (1004)
+- plus a **CONFIG** panel for the recordings
 
-Both register automatically with the Asterisk container (`doorbell-device`) on
-`127.0.0.1:5060`. The green dot next to the account name means "registered".
+Start the PBX, then the TUI (in another terminal, from `tui/`):
 
-> The phones do **not** auto-answer — click the green call button to pick up.
+```bash
+./scripts/start-all.sh
+cd tui && cargo run --release
+```
+
+Each panel registers automatically with the Asterisk container
+(`doorbell-device`) on `127.0.0.1:5060`. The panel shows `Registered: Yes`
+once it is up.
+
+> Panels do **not** auto-answer — press **Enter** on a ringing panel to pick up.
+
+## Key bindings
+
+| Key | Action |
+|---|---|
+| `0`–`9` then Enter | dial that extension |
+| Enter (on a ringing panel) | answer |
+| `4` (on a ringing panel) | decline |
+| `H` | hang up |
+| Backspace | delete the last dialled digit |
+| `0`–`9`, `*`, `#` during a call | send DTMF |
+| Tab / ← / → | switch panels |
+| `Q` / Esc | quit |
+| CONFIG panel: ↑/↓ select, `P` play, `D` delete, `R` refresh | manage recordings |
 
 ---
 
 ## Demo 1 — Voice call + call recording
 
-1. In the **visitor** window, click the search bar, type `owner`, press **Enter**.
-2. The **owner** window rings and shows **Visitor** as the caller. Click **Answer**.
-3. Talk; audio flows both ways. Recording starts automatically.
-4. Hang up from either side.
-5. Verify the recording:
+1. Press **Tab** until the **hadji** panel is ACTIVE.
+2. Type `1003` and press **Enter**.
+3. The **miora** panel starts ringing and the focus jumps to it. Press
+   **Enter** there to answer.
+4. Talk. Only the caller transmits — the callee answers receive-only, so Hadji
+   is heard on Miora's panel. Recording starts automatically.
+5. Press **H** to hang up.
+6. Verify the recording:
 
    ```bash
    docker exec doorbell-device ls -la /var/spool/asterisk/monitor/
    ```
    → a new `.wav` file (PCM 8 kHz mono).
 
-6. **Listen to it** on your speakers:
+7. **Listen to it** on your speakers:
 
    ```bash
    ./scripts/play-recording.sh          # play the most recent recording
@@ -35,19 +60,19 @@ Both register automatically with the Asterisk container (`doorbell-device`) on
    ```
 
    In the guided demo (`./demo.sh` → option 4), press **`p`** on step 1 or
-   step 8 to play the latest recording.
+   step 7 to play the latest recording.
 
 ---
 
 ## Demo 2 — IVR (greeting menu)
 
-1. Dial `9999` and press Enter (or click the call button).
+1. On any panel, dial `9999` and press Enter.
 2. You hear the doorbell menu, then a pause to choose.
 3. **Layer 1 — pick a person:** **1** Hadji · **2** Johnson · **3** Miora ·
    **4** Ulrich · **0** repeats the menu.
 4. **Layer 2 — for that person:** **1** call them now · **2** leave them a
    message · **0** repeats this menu.
-   With **1** the phone rings **4 times** (24 s); if nobody picks up, the caller
+   With **1** the panel rings **4 times** (24 s); if nobody picks up, the caller
    hears "Please leave your message after the beep" and the message lands in
    that person's panel — the same flow as **2**.
 5. no input → goodbye and hang up. invalid digit → "invalid" prompt, then
@@ -72,7 +97,7 @@ Both register automatically with the Asterisk container (`doorbell-device`) on
 **Or leave a message after 4 rings**
 
 1. Dial `9999`, press the person, then press **1** (call them now).
-2. Their phone rings **4 times** (24 s). If nobody picks up you hear "Please
+2. Their panel rings **4 times** (24 s). If nobody picks up you hear "Please
    leave your message after the beep" instead of Asterisk's own voicemail
    greeting, and the message is saved exactly like the one above: the silent
    recording of the ringing is dropped, so the panel gets one file, not two.
@@ -96,6 +121,11 @@ In the TUI the message also appears **by itself** in that person's panel
 (`Messages (N)`), already selected, with `New message: …` in the status line.
 Press **P** to hear it — there is nothing to refresh.
 
+**Replay the message — from the TUI**
+
+Select the person's panel with Tab, use ↑/↓ on their `Messages (N)` list and
+press **P**.
+
 **Replay the message — from the command line**
 
 ```bash
@@ -103,11 +133,6 @@ Press **P** to hear it — there is nothing to refresh.
 ./scripts/play-recording.sh --list     # list them all
 ./scripts/play-recording.sh --info     # codec / duration / size
 ```
-
-**Replay the message — from the TUI**
-
-Select the person's panel with Tab, use ↑/↓ on their `Messages (N)` list and
-press **P**.
 
 **Voicemail (dial `*97`)**
 
@@ -121,7 +146,7 @@ boxes are still there if you want them:
 ./scripts/play-voicemail.sh --mailbox miora
 ```
 
-Or dial `*97` from a phone and enter that person's PIN — `1234` Hadji, `2345`
+Or dial `*97` from a panel and enter that person's PIN — `1234` Hadji, `2345`
 Johnson, `3456` Miora, `4567` Ulrich (see `configs/voicemail.conf`).
 Keypad: `1` new messages, `2` old, `3` advanced, `4` folders, `0` options,
 `*` help, `#` exit.
@@ -146,19 +171,12 @@ ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers
 
 ---
 
-## Demo 5 — One-to-one video
+## Video
 
-Asterisk relays video without transcoding, so both sides must offer a common
-codec (**VP8** here).
-
-1. In the **visitor** window, start a call to `owner` (search bar → `owner` → Enter).
-2. Before/while ringing, click the **video camera** button in the call window to
-   enable video (both windows have `capture=1` / `display=1`).
-3. The **owner** answers; click the video button there too if needed.
-4. Both windows show the live camera image.
-
-> If the camera does not open, check the camera device in Linphone's
-> *Settings → Video*.
+Asterisk can relay video without transcoding (H264/VP8), but the bundled TUI
+loads no video module and dials audio-only, so a video call is not part of the
+TUI demo. To exercise video you would need a video-capable client pointed at the
+container.
 
 ---
 
@@ -172,12 +190,14 @@ codec (**VP8** here).
 
 | Code | Action |
 |---|---|
-| `owner` | Call the owner (from the visitor window) |
-| `visitor` | Call the visitor (from the owner window) |
+| `1001` / `hadji` | Call Hadji |
+| `1002` / `johnson` | Call Johnson |
+| `1003` / `miora` | Call Miora |
+| `1004` / `ulrich` | Call Ulrich |
 | `9999` | IVR greeting menu |
 | `*43` | Echo test (audio check) |
 | `*44` | Playback test |
-| `*97` | Check your own voicemail (PIN 5678 for owner, 1234 for visitor) |
+| `*97` | Check your own voicemail (PIN 1234 Hadji, 2345 Johnson, 3456 Miora, 4567 Ulrich) |
 | `1` (in IVR) | Reach Hadji (1001) |
 | `2` (in IVR) | Reach Johnson (1002) |
 | `3` (in IVR) | Reach Miora (1003) |
