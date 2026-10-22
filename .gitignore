@@ -30,3 +30,12 @@ visitor/
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Report artifacts (generated locally, never commit)
+Rapport_Doorbell_Intercom.*
+docs/documentation-fr.*
+figures/
+build_report.py
+emfgen.py
+make_figures.py
+.~lock.*#
