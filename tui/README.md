@@ -13,7 +13,7 @@ SIP/RTP/DTMF is handled by baresip.
 
 ```bash
 # 1. PBX (from the repo root)
-./scripts/start-all.sh          # or ./demo.sh
+docker compose -f docker/docker-compose.yml up -d --build
 
 # 2. TUI
 cd tui

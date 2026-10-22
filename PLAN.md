@@ -66,11 +66,6 @@ Linux_Embarque/
 │   └── rtp.conf              # Media port range
 ├── sounds/                   # Recorded greetings and prompts
 │   └── custom/               # Your recorded audio (ulaw, 8 kHz, mono)
-├── scripts/                  # Helper scripts
-│   ├── build-image.sh        # Build Docker image
-│   ├── run.sh                # Run the "device" container
-│   ├── smoke-test.sh         # Automated basic checks
-│   └── record-greeting.sh    # Record a greeting with ffmpeg
 ├── tests/                    # Test notes and checklists
 │   └── test-plan.md
 └── docs/                     # Notes, decisions, results
@@ -104,7 +99,7 @@ Tasks:
   - Expose ports: 5060/udp (SIP), 10000-10100/udp (media/RTP), 5061/tcp (optional TLS).
   - Entrypoint runs Asterisk in foreground (`asterisk -f`).
 - [ ] Write `docker/docker-compose.yml` with the asterisk service and port mappings.
-- [ ] Write `scripts/build-image.sh` and `scripts/run.sh`.
+- [ ] Build and run the container with `docker compose up --build`.
 - [ ] Build and run; verify Asterisk starts: `docker logs <container>` and `asterisk -rx "core show version"` (via `docker exec`).
 
 **Done when:** Container runs, Asterisk daemon is up, CLI responds.
@@ -135,7 +130,7 @@ Tasks:
 **Goal:** A caller hears a greeting and a keypad menu, and pressing a digit routes the call.
 
 Tasks:
-- [ ] Record greeting with ffmpeg: `record-greeting.sh` records mic → ulaw 8 kHz mono WAV into `sounds/custom/welcome.wav` (and optionally `.ulaw`).
+- [ ] Record greeting with ffmpeg straight from the mic → ulaw 8 kHz mono WAV into `sounds/custom/welcome.wav` (and optionally `.ulaw`).
   - Alternative: use a text-to-speech or a sample file if no mic.
 - [ ] Create menu context in `extensions.conf`:
   - `ivr-main`: `Answer()`, `Background(custom/welcome)`, `WaitExten(5)`.
@@ -174,7 +169,7 @@ Tasks:
 Tasks:
 - [ ] In dialplan, add `MixMonitor()` at the start of calls (e.g., in `internal` context or in the IVR entry): `MixMonitor(/var/spool/asterisk/monitor/${STRFTIME(${EPOCH},,%Y%m%d-%H%M%S)}-${UNIQUEID}.wav)`.
 - [ ] Ensure the monitor directory exists and is writable by the asterisk user.
-- [ ] Add a simple size guard: document a cleanup rule (e.g., delete recordings older than 7 days) — implement as a cron or a manual script `scripts/cleanup-recordings.sh`.
+- [ ] Add a simple size guard: document a cleanup rule (e.g. delete recordings older than 7 days) — run it manually or from a cron job.
 - [ ] `cdr.conf` / CDR CSV: enable default CSV backend; verify `/var/log/asterisk/cdr-csv/Master.csv` gets a row per call.
 - [ ] Test: make a call, check a WAV file appears in the monitor folder and plays back; check CDR row.
 
@@ -210,7 +205,7 @@ Tasks:
   - Voicemail: leave, retrieve, delete, PIN.
   - Recording: file exists, playable, CDR row.
   - Video: one-to-one call, mixed call.
-- [ ] Write `scripts/smoke-test.sh`: runs `asterisk -rx` checks (endpoints registered, modules loaded, dialplan shows contexts) and reports pass/fail.
+- [ ] Document basic checks with `asterisk -rx`: endpoints registered, modules loaded, dialplan contexts present.
 - [ ] Soak test: run 20–50 calls in a loop (using a script or sipp), check for zombie channels (`core show channels`), memory growth, log errors.
 - [ ] Document results in `docs/notes.md`.
 
@@ -224,10 +219,10 @@ Tasks:
 Tasks:
 - [ ] Finalize `README.md`: prerequisites, build steps, run steps, test steps, troubleshooting.
 - [ ] Commit/pin Alpine version and Asterisk version in Dockerfile for reproducibility.
-- [ ] Add a "reset to clean state" script (remove recordings, voicemail, logs).
+- [ ] Add a documented "reset to clean state" procedure (remove recordings, voicemail, logs).
 - [ ] (Optional) If you later want real hardware: note the path to flash the Alpine image to a board (out of scope for emulation).
 
-**Done when:** A fresh clone + `scripts/build-image.sh` + `scripts/run.sh` yields a working device.
+**Done when:** A fresh clone + `docker compose up --build` yields a working device.
 
 ---
 

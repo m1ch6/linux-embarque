@@ -38,7 +38,7 @@
 ## Phase 4 — Voicemail
 - [ ] Leave a message when a call is unanswered (busy/unavail falls through to voicemail).
 - [ ] Mailboxes are `hadji`, `johnson`, `miora`, `ulrich`; `*97` opens the caller's own mailbox.
-- [ ] Listen, delete, verify empty (`./scripts/play-voicemail.sh --list`).
+- [ ] Listen, delete, verify empty (`docker exec doorbell-device find /var/spool/asterisk/voicemail -type f`).
 - [ ] PIN required to access.
 
 ## Phase 5 — Recording

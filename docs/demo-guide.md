@@ -8,7 +8,7 @@ The SIP clients are the TUI's panels — one baresip endpoint per resident:
 Start the PBX, then the TUI (in another terminal, from `tui/`):
 
 ```bash
-./scripts/start-all.sh
+docker compose -f docker/docker-compose.yml up -d --build
 cd tui && cargo run --release
 ```
 
@@ -53,14 +53,13 @@ once it is up.
 7. **Listen to it** on your speakers:
 
    ```bash
-   ./scripts/play-recording.sh          # play the most recent recording
-   ./scripts/play-recording.sh --info   # show codec / duration / size
-   ./scripts/play-recording.sh --list   # list recordings
-   ./scripts/play-recording.sh <name>.wav
-   ```
+   # list recordings (newest first)
+   docker exec doorbell-device ls -lt /var/spool/asterisk/monitor
 
-   In the guided demo (`./demo.sh` → option 4), press **`p`** on step 1 or
-   step 7 to play the latest recording.
+   # copy one out and play it
+   docker cp doorbell-device:/var/spool/asterisk/monitor/<file>.wav /tmp/
+   ffplay -autoexit /tmp/<file>.wav
+   ```
 
 ---
 
@@ -110,8 +109,8 @@ once it is up.
 **Verify the message**
 
 ```bash
-docker exec doorbell-device ls -l /var/spool/asterisk/monitor/
-./scripts/play-recording.sh --list
+docker exec doorbell-device ls -lt /var/spool/asterisk/monitor
+docker cp doorbell-device:/var/spool/asterisk/monitor/<file>.wav /tmp/
 ```
 → the message is saved as `<number>-<timestamp>-<uniqueid>.wav`, e.g.
 `1003-20261019-080816-...wav` if you chose Miora. The extension number comes
@@ -129,9 +128,9 @@ press **P**.
 **Replay the message — from the command line**
 
 ```bash
-./scripts/play-recording.sh            # play the most recent recording
-./scripts/play-recording.sh --list     # list them all
-./scripts/play-recording.sh --info     # codec / duration / size
+docker exec doorbell-device ls -lt /var/spool/asterisk/monitor
+docker cp doorbell-device:/var/spool/asterisk/monitor/<file>.wav /tmp/
+ffplay -autoexit /tmp/<file>.wav
 ```
 
 **Voicemail (dial `*97`)**
@@ -141,9 +140,12 @@ a message, which lands in the person's panel like any other. The voicemail
 boxes are still there if you want them:
 
 ```bash
-./scripts/play-voicemail.sh --list        # every mailbox + message
-./scripts/play-voicemail.sh               # newest message in any mailbox
-./scripts/play-voicemail.sh --mailbox miora
+# list every voicemail file
+docker exec doorbell-device find /var/spool/asterisk/voicemail -type f
+
+# copy one out and play it
+docker cp doorbell-device:/var/spool/asterisk/voicemail/<path> /tmp/
+ffplay -autoexit /tmp/<file>
 ```
 
 Or dial `*97` from a panel and enter that person's PIN — `1234` Hadji, `2345`
@@ -183,7 +185,7 @@ container.
 ## Stopping the demo
 
 ```bash
-./scripts/stop-all.sh          # or menu option 2 in ./demo.sh
+docker compose -f docker/docker-compose.yml down
 ```
 
 ## Quick reference — dial codes
